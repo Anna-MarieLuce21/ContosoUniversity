@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using ContosoUniversity.Data;
-using ContosoUniversity.Models;
+using ContosoUniversity.Models.StudentViewModels;
 
 namespace ContosoUniversity.Pages.Students
 {
@@ -21,57 +21,52 @@ namespace ContosoUniversity.Pages.Students
         }
 
         [BindProperty]
-        public Student Student { get; set; } = default!;
+
+        public StudentVM StudentVM { get; set; } = new();
 
         public async Task<IActionResult> OnGetAsync(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
+            
+            var student = await _context.Students.FindAsync(id);
 
-            var student =  await _context.Student.FirstOrDefaultAsync(m => m.ID == id);
-            if (student == null)
+            if (student == null) return NotFound();
+
+            StudentVM = new StudentVM
             {
-                return NotFound();
-            }
-            Student = student;
+                ID             = student.ID,
+                LastName       = student.LastName,
+                FirstName      = student.FirstName,
+                EnrollmentDate = student.EnrollmentDate
+            };
+
             return Page();
         }
 
         // To protect from overposting attacks, enable the specific properties you want to bind to.
         // For more information, see https://aka.ms/RazorPagesCRUD.
-        public async Task<IActionResult> OnPostAsync()
-        {
-            if (!ModelState.IsValid)
-            {
-                return Page();
-            }
+        public async Task<IActionResult> OnPostAsync(int id)
+        {   
+            if (!ModelState.IsValid) return Page();
 
-            _context.Attach(Student).State = EntityState.Modified;
+            var studentToUpdate = await _context.Students.FindAsync(id);
 
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!StudentExists(Student.ID))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
+            if (studentToUpdate == null) return NotFound();
+
+            studentToUpdate.LastName       = StudentVM.LastName;
+            studentToUpdate.FirstName      = StudentVM.FirstName;
+            studentToUpdate.EnrollmentDate = StudentVM.EnrollmentDate;
+
+            await _context.SaveChangesAsync();
+
+            TempData["Message"] = "Student updated successfully.";
 
             return RedirectToPage("./Index");
         }
 
         private bool StudentExists(int id)
         {
-            return _context.Student.Any(e => e.ID == id);
+            return _context.Students.Any(e => e.ID == id);
         }
     }
 }
